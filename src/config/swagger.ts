@@ -1,0 +1,30 @@
+import swaggerJSDoc from "swagger-jsdoc";
+import swaggerUi from "swagger-ui-express";
+import { Express } from "express";
+
+const swaggerDefinition = {
+  openapi: "3.0.0",
+  info: {
+    title: "User API Docs",
+    version: "1.0.0",
+    description: "This is the documentation for the HRMS Portal API.",
+  },
+  servers: [
+    {
+      url: "http://localhost:5000/auth/api", // replace with your host and base path
+      description: "Development server",
+    },
+  ],
+};
+
+const options = {
+  swaggerDefinition,
+  // Path to the APIs
+  apis: ["./src/routes/*.ts", "./src/controllers/*.ts"], // adjust as needed
+};
+
+const swaggerSpec = swaggerJSDoc(options);
+
+export const setupSwagger = (app: Express) => {
+  app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+};
