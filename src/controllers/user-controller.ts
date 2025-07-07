@@ -39,35 +39,43 @@ const registerUser = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-
 const loginUser = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { email, password } = req.body;
+    const { loginType, email, password, emailOrMobile } = req.body;
 
-    const user = await userModel.findOne({ email });
+    const identifier = loginType === "otp" ? emailOrMobile : email;
+
+    const user = await userModel.findOne(
+      loginType === "otp"
+        ? { $or: [{ email: identifier }, { mobileNo: identifier }] }
+        : { email: identifier }
+    );
 
     if (!user) {
       res.status(404).json({ message: "User not found" });
       return;
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
-
-    if (!isMatch) {
-      res.status(400).json({ message: "Invalid credentials" });
-      return;
+    // If password login, validate password
+    if (loginType === "password") {
+      const isMatch = await bcrypt.compare(password, user.password ?? "");
+      if (!isMatch) {
+        res.status(400).json({ message: "Invalid credentials" });
+        return;
+      }
     }
 
-    // Generate JWT token
+    // Generate JWT
     const token = jwt.sign(
       { id: user._id, email: user.email, role: user.role },
-      JWT_SECRET,
+      JWT_SECRET!,
       { expiresIn: "1d" }
     );
 
+    // Respond
     res.status(200).json({
       status: 200,
-      message: "User Login successfully!",
+      message: "User logged in successfully!",
       token,
       user: {
         id: user._id,
@@ -84,5 +92,5 @@ const loginUser = async (req: Request, res: Response): Promise<void> => {
 
 export const userController = {
   registerUser,
-  loginUser
+  loginUser,
 };
