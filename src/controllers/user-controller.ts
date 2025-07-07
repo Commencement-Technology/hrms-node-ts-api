@@ -1,5 +1,13 @@
 import { Request, Response } from "express";
+import jwt from "jsonwebtoken";
 import userModel from "../models/userModel";
+import bcrypt from "bcryptjs";
+
+const JWT_SECRET = process.env.JWT_SECRET as string | undefined;
+
+if (!JWT_SECRET) {
+  throw new Error("JWT_SECRET is not defined in environment variables.");
+}
 
 const registerUser = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -12,11 +20,13 @@ const registerUser = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     const user = await userModel.create({
       name,
       email,
       mobileNo,
-      password,
+      password: hashedPassword,
       verificationCode,
       role: role || "user",
     });
@@ -29,6 +39,50 @@ const registerUser = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
+
+const loginUser = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email, password } = req.body;
+
+    const user = await userModel.findOne({ email });
+
+    if (!user) {
+      res.status(404).json({ message: "User not found" });
+      return;
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+
+    if (!isMatch) {
+      res.status(400).json({ message: "Invalid credentials" });
+      return;
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: user._id, email: user.email, role: user.role },
+      JWT_SECRET,
+      { expiresIn: "1d" }
+    );
+
+    res.status(200).json({
+      status: 200,
+      message: "User Login successfully!",
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        mobileNo: user.mobileNo,
+        role: user.role,
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 export const userController = {
   registerUser,
+  loginUser
 };

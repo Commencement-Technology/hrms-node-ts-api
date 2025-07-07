@@ -6,3 +6,11 @@ export interface IUser {
   verificationCode: string;
   role?: "user" | "admin";
 }
+
+
+export interface ILogin {
+  email: string;
+  password:string;
+  mobileNo:string;
+  verificationCode: string;
+}
